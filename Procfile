@@ -1,1 +1,1 @@
-web: bokeh serve . --port 80
+web: bokeh serve . --port $PORT
