@@ -1,1 +1,1 @@
-web: bokeh serve . --port $PORT --allow-websocket-origin=*.*.*.*:$PORT
+web: bokeh serve . --port $PORT --allow-websocket-origin=warm-crag-25935.herokuapp.com
