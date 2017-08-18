@@ -1,1 +1,1 @@
-web: bokeh serve .
+web: bokeh serve . --port 80
