@@ -1,1 +1,1 @@
-web: bokeh serve . --port $PORT
+web: bokeh serve . --port $PORT --allow-websocket-origin=*.*.*.*:$PORT
