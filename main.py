@@ -79,7 +79,7 @@ def update_data():
         [next(a) for x in range(10)]
         n = next(a)
         n['#'] = [i]
-        new_data = {'t': [n['Xball'][0].imag*100], '#': [n['Xball'][0].real*100]}
+        new_data = {'t': [n['Xball'].imag*100], '#': [n['Xball'].real*100]}
     except StopIteration:
         a = nxt.nextdata()
         n = next(a)

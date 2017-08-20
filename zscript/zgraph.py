@@ -10,17 +10,12 @@ from bokeh.plotting import Figure
 import numpy as np
 
 
-def graph(trce, grph, nextdata):
+def graph(grph, nextdata):
     ndata = nextdata()
     source = ColumnDataSource(next(ndata))
     for x, y in grph:
         fig = Figure()
         fig.line(source=source, x=x, y=y, line_width=2, alpha=0.85, color='red')
-        curdoc().add_root(fig)
-
-    for y in trce:
-        fig = Figure()
-        fig.line(source=source, x='#', y=y)
         curdoc().add_root(fig)
 
     i = 0
@@ -37,7 +32,7 @@ def graph(trce, grph, nextdata):
         new_data['#'] = i
 
         source.stream(new_data, 100)
-    curdoc().add_periodic_callback(updategraph, 100)
+    curdoc().add_next_tick_callback(updategraph)
 
 
 

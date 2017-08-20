@@ -20,7 +20,7 @@ def printgen(gen):
         for i in gen:
             x += 1
             r.append(i)
-            if x % 1000 == 0:
+            if x % 1 == 0:
                 print(i)
         if i is not None:
             print(i)
@@ -58,6 +58,7 @@ def testparser(test):
 
 
 def compiler(instr, x=1):
+    instr = instr.lower()
     tokens = lexer.lex(instr)
     try:
         tokens = list(tokens)
@@ -103,7 +104,6 @@ def run(tree, env, instr='', x=1):
             plotting = printgen(out)
         except Exception as e:
             runerror(e, instr, x)
-
     return plotting
 
 
@@ -122,8 +122,9 @@ def compilerun(eq, env):
     return plottings
 
 
-def repl():
-    env = Env(repl=True)
+def repl(env=None):
+    if env is None:
+        env = Env(repl=True)
     eq = None
     print('Type in your Equation, "env" to see the variables, or "quit" to stop')
     while eq != 'quit':
@@ -138,6 +139,7 @@ def repl():
             for warning in ZWarning.currentwarnings:
                 print(warning)
             ZWarning.clearwarnings()
+    return env
 
 
 if __name__ == '__main__':

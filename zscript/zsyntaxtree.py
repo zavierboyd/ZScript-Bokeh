@@ -177,6 +177,7 @@ class Next(Base):
     def __call__(self, env, flag=None):
         tenv = env.object['trc']
         genv = env.object['gph']
+        nenv = env.object['nxt']
         vars = tenv
         for x, y in genv:
             if x not in vars:
@@ -184,35 +185,42 @@ class Next(Base):
             if y not in vars:
                 vars.append(y)
 
-        def dictdata(vars):
-            c = {}
-            for var in vars:
-                val = env[var, 'cur']
-                c[var] = [val]
+        listdata = lambda vars: [env[var, 'cur'] for var in vars]
+
+        def loop():
+            newvalues = env.object['val'].copy()
+            for var, eq in nenv.items():
+                try:
+                    v = Literal(eq(env, flag))
+                except Exception as e:
+                    args = ', '.join([i for i in e.args if type(i) in (str,)])
+                    error = e.__class__()
+                    error.message = args + '\nThere was an error while updating "%s"\n%s_ = %s' % (var, var, eq)
+                    raise error
+                newvalues[var] = v
+            env.object['val'] = newvalues
+            c = listdata(vars)
             return c
 
         def nextdata():
-            c = dictdata(vars)
-            yield c
-            nenv = env.object['nxt']
-            while True:
-                newvalues = env.object['val'].copy()
-                for var, eq in nenv.items():
-                    try:
-                        v = Literal(eq(env, flag))
-                    except Exception as e:
-                        args = ', '.join([i for i in e.args if type(i) in (str,)])
-                        error = e.__class__()
-                        error.message = args+'\nThere was an error while updating "%s"\n%s_ = %s' % (var, var, eq)
+            def n1():
+                yield listdata(vars)
+                for i in range(self.loops):
+                    yield loop()
+            def n2():
+                yield listdata(vars)
+                while True:
+                    yield loop()
+            if self.loops > 0:
+                return n1()
+            else:
+                return n2()
 
-                        raise error
-                    newvalues[var] = v
-                env.object['val'] = newvalues
-                c = dictdata(vars)
-                yield c
-        self.nextdata = nextdata
-        # graph(tenv, genv, nextdata)
-        # return nextdata()
+        self.nextdata = nextdata()
+        if genv:
+            graph(genv, nextdata)
+        if self.loops != 0:
+            return nextdata()
 
     def __repr__(self):
         return 'next ' + str(self.loops)

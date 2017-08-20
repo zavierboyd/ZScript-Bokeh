@@ -1,5 +1,6 @@
 from zscript.zsyntaxtree import *
 from collections import defaultdict
+import numpy as np
 
 
 class EnvGetValExt:
@@ -43,10 +44,10 @@ class Env:
         self.repl = repl
         self.value = {}
         self.nextval = {}
-        self.current = {'True': Boolean(True), 'False': Boolean(False)}
+        self.current = {'true': Boolean(True), 'false': Boolean(False), 'pi': Number(np.pi), 'e': Number(np.e)}
         self.defdepent = defaultdict(list)
         self.trace = []
-        self.functions = {'mag': FuncCall(abs)}
+        self.functions = {'abs': FuncCall(abs), 'mag': FuncCall(abs), 'cos': FuncCall(np.cos), 'sin': FuncCall(np.sin)}
         self.graph = []
         self.object = EnvGetObjExt(self)
 
@@ -152,16 +153,16 @@ class Env:
         if item not in self.trace:
             self.trace.append(item)
 
-
     def graphvars(self, x, y):
         if (x, y) not in self.graph:
             self.graph.append((x, y))
 
-
     def __repr__(self):
         current = self.current.copy()
-        del current['True']
-        del current['False']
+        del current['true']
+        del current['false']
+        del current['pi']
+        del current['e']
         program = ''
 
         value = '\n'.join([repr(SetVar(var, val)) for var, val in self.value.items()])
