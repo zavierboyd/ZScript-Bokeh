@@ -6,10 +6,11 @@ import string
 import sys
 import warnings
 
-from zscript.rply.utils import Counter, IdentityDict, iteritems, itervalues
-from zscript.rply.grammar import Grammar
-from zscript.rply.parser import LRParser
-from zscript.rply.errors import ParserGeneratorError, ParserGeneratorWarning
+from .errors import ParserGeneratorError, ParserGeneratorWarning
+from .parser import LRParser
+from .utils import Counter, IdentityDict, iteritems, itervalues
+
+from .grammar import Grammar
 
 LARGE_VALUE = sys.maxsize
 

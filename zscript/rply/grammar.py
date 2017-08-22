@@ -1,5 +1,6 @@
-from zscript.rply.errors import ParserGeneratorError
-from zscript.rply.utils import iteritems
+from .errors import ParserGeneratorError
+
+from .utils import iteritems
 
 
 def rightmost_terminal(symbols, terminals):

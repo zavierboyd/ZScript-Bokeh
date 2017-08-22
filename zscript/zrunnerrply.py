@@ -1,8 +1,8 @@
-from zscript.rply.errors import *
-from zscript.zenv import Env
-from zscript.zlexerrply import lexer
-from zscript.zscriptrply import parser
-from zscript.zsyntaxtree import *
+from .rply.errors import *
+from .zenv import Env
+from .zlexerrply import lexer
+from .zscriptrply import parser
+from .zsyntaxtree import *
 
 
 def printgen(gen):

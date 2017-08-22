@@ -1,5 +1,6 @@
-from zscript.rply.errors import LexingError
-from zscript.rply.token import SourcePosition, Token
+from .token import SourcePosition, Token
+
+from .errors import LexingError
 
 
 class Lexer(object):

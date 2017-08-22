@@ -1,7 +1,7 @@
-from zscript.rply.lexergenerator import LexerGenerator
-from zscript.rply.parsergenerator import ParserGenerator
-from zscript.rply.errors import ParsingError
-from zscript.rply.token import Token
+from .lexergenerator import LexerGenerator
+from .token import Token
+from .parsergenerator import ParserGenerator
+from .errors import ParsingError
 
 __all__ = [
     "LexerGenerator", "ParserGenerator", "ParsingError", "Token"

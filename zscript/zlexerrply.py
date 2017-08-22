@@ -1,4 +1,4 @@
-from zscript.rply import LexerGenerator
+from .rply import LexerGenerator
 
 lg = LexerGenerator()
 

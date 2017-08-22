@@ -1,4 +1,4 @@
-from zscript.zsyntaxtree import *
+from .zsyntaxtree import *
 from collections import defaultdict
 import numpy as np
 from copy import deepcopy

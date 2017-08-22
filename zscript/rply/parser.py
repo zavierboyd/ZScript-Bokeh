@@ -1,4 +1,4 @@
-from zscript.rply.errors import ParsingError
+from .errors import ParsingError
 
 
 class LRParser(object):
@@ -7,7 +7,7 @@ class LRParser(object):
         self.error_handler = error_handler
 
     def parse(self, tokenizer, state=None):
-        from zscript.rply.token import Token
+        from .token import Token
 
         lookahead = None
         lookaheadstack = []

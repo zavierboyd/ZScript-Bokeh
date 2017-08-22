@@ -2,7 +2,7 @@ import operator as op
 import random as rdm
 from collections import defaultdict
 
-from zscript.rply.token import BaseBox
+from .rply.token import BaseBox
 
 
 class ZWarning(Warning):
