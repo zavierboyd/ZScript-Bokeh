@@ -7,19 +7,20 @@ from zscript.zsyntaxtree import *
 
 def printgen(gen):
     x = 0
-    r = []
+    r = {}
     i = None
     z = next(gen)
-    if type(z) != list:
+    if type(z) != dict:
         if type(z) == complex:
             z = (z.real, z.imag)
         print(z)
         return z
     else:
-        r.append(z)
+        for var, val in z.items():
+            r[var] = [val]
         for i in gen:
             x += 1
-            r.append(i)
+            [r[var].append(val) for var, val in i.items()]
             if x % 1 == 0:
                 print(i)
         if i is not None:
@@ -93,10 +94,10 @@ def runerror(e, instr, x):
         etype + ': ' + args + '\nThere was an error while running the line: "%s" \nLineNo: %d' % (instr, x))
 
 
-def run(tree, env, instr='', x=1):
-    plotting = []
+def run(program, env, instr='', x=1):
+    plotting = None
     try:
-        out = tree(env)
+        out = program(env)
     except Exception as e:
         runerror(e, instr, x)
     if out is not None:
@@ -116,7 +117,7 @@ def compilerun(eq, env):
     for instr in neq:
         tree = compiler(instr, x)
         plot = run(tree, env, instr, x)
-        if type(tree) in (Next, Print, Graph):
+        if plot is not None:
             plottings.append(plot)
         x += 1
     return plottings

@@ -1,6 +1,7 @@
 from zscript.zsyntaxtree import *
 from collections import defaultdict
 import numpy as np
+from copy import deepcopy
 
 
 class EnvGetValExt:
@@ -42,7 +43,7 @@ class FuncCall:
 class Env:
     def __init__(self, repl=False):
         self.repl = repl
-        self.value = {}
+        self.value = {'random': Random()}
         self.nextval = {}
         self.current = {'true': Boolean(True), 'false': Boolean(False), 'pi': Number(np.pi), 'e': Number(np.e)}
         self.defdepent = defaultdict(list)
@@ -80,7 +81,7 @@ class Env:
                     raise Exception('Cannot Redefine The Definition "%s"' % item)
                 else:
                      ZWarning('You are changing a variable Definition. If you wish to change this regularly use :=')
-            circle, future = self.circleref(item, value, flag)
+            circle, future, random = self.circleref(item, value, flag)
             if circle:  # Checks for Circular Referencing
                 raise Exception('Circular Reference found when defining "%s"' % item)
             elif flag == 'nxt':
@@ -90,12 +91,13 @@ class Env:
             elif flag == 'cur':
                 if future:  # Checks for Future Definitions in Current Definitions
                     raise SyntaxError('Trying to reference a Future Definition in "%s"' % item)
-                else:
-                    if item in self.value:  # Deletes Old Value copy of New Current Definition
-                        del self.value[item]
-                    if item in self.nextval:
-                        del self.nextval[item]
-                    self.current[item] = value
+                if random:
+                    raise SyntaxError('Current Definition uses "random" and is no longer functional change it!')
+                if item in self.value:  # Deletes Old Value copy of New Current Definition
+                    del self.value[item]
+                if item in self.nextval:
+                    del self.nextval[item]
+                self.current[item] = value
         elif flag == 'val':
             if not(self.repl) and (item in self.current):  # Checks for a Current Definition by the same Identifier
                 raise Exception("Can't change a Current Definition to a Variable '%s'" % item)
@@ -122,7 +124,7 @@ class Env:
         else:
             raise Exception('The flag "%s" is not a valid flag' % flag)
 
-    def circleref(self, ident, prgr, flag):
+    def circleref(self, ident, definition, flag):
         """ident: a String of the Definition Identifier
         prgr: an Object that contains the Definition Program
 
@@ -130,12 +132,13 @@ class Env:
         First Bool tells if there is circle reference
         Second Bool tells if it references a future definition
         Example: (True, False)"""
-
+        definition = deepcopy(definition)
         test = TestEnv()
         if flag == 'nxt':
             ident += '_'
-        prgr(test)
+        definition(test)
         future = len(test.object['nxt']) != 0
+        random = 'random' in test.object['cur']
         self.defdepent[ident] = list(test.object['nxt'].keys()) + list(test.object['cur'].keys())
 
         def findfuncs(dependent, ident, var):
@@ -147,7 +150,7 @@ class Env:
                     return findfuncs(dependent, ident, func)
         circle = findfuncs(self.defdepent, ident, ident)
         ident = ident[:-1]
-        return circle, future
+        return circle, future, random
 
     def tracevar(self, item):
         if item not in self.trace:

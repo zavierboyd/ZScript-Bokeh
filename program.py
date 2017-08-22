@@ -41,58 +41,64 @@ spring = ''';; constant ;; values for this simulation
                 trace Xball'''
 
 
-spring_adaptive = ''';; constant ;; values for this simulation
-                dt := 0.00001 ;;(1/210)
-                ks := 6.83 ;; Spring Tension
-                L0 := 0.1 ;; 0.123
-                g := (0, -9.81)
-                Mball := 0.402
-                Xspring := (0, 0) ;;(-0.007, -0.0050)
+zscript_code = '''
+            ;; constant ;; values for this simulation
+                dt := 0.1 ;;(1/210)
+                ks := 10 ;; Spring Tension
+                ;; L0 := 0.1 ;; 0.123
+                ;; g := (0, -9.81)
+                m := 1
+                Xspring = (0,1)*sin (2t) ;; (0, sin t) ;;(-0.007, -0.0050)
 
             ;; initial values
-                x := (0.108, -0.763)
+                x := (0, 1) ;; (0.108, -0.763)
                 v := (0, 0) ;;(0.18, 0)*10
-                ;;v := 50 * (1, 1) ;; throw it super hard to start the weight/spring spinning around
-                p := v*Mball
+                ;; v := 50 * (1, 1) ;; throw it super hard to start the weight/spring spinning around
+                ;; p := v*m
                 t := 0
-                dLdt := 0
-                Kfs := 1*2*(ks*Mball)^(1/2)  ;; optimal damping of spring
-                Kfa := 0.01  ;; small air resistance
+                ;; dLdt := 0
+                ;; Kfs := 1*2*(ks*m)^(1/2)  ;; optimal damping of spring
+                ;; Kfa := 0.01  ;; small air resistance
 
             ;; calculated values - current values, not 'next' values
                 L = x - Xspring
                 Lmag = mag L
                 Lh = L/Lmag
-                stretch = Lmag - L0
+                stretch = Lmag ;; - L0
                 Fs = -ks*stretch*Lh
-                Ffs = -Kfs*dLdt*Lh ;; in the direction of the spring, against the spring movement
-                Ffa = -Kfa*v ;; in the direction against velocity
-                Fg = Mball*g
-                Fnet = Fs + Fg + Ffs + Ffa;; take off friction for coolness
-                ;; v = p / Mball
+                ;; Ffs = -Kfs*dLdt*Lh ;; in the direction of the spring, against the spring movement
+                ;; Ffa = -Kfa*v ;; in the direction against velocity
+                ;; Fg = m*g
+                Fnet = Fs ;; + Fg + Ffs + Ffa;; take off friction for coolness
+                ;; v = p / m
 
             ;; next time step (create 'next' values)
-                dLdt_ = (Lmag_ - Lmag)/dt  ;; differentiate length
+                ;; dLdt_ = (Lmag_ - Lmag)/dt  ;; differentiate length
                 ;; p_ = p + Fnet*dt  ;; momentum = integral of force
                 ;; x_ = x + v_*dt  ;; position = integral of velocity
                 t_ = t + dt  ;; Integrate time by a constant
 
 
-a = Fnet/Mball
-p = v/Mball
+a = Fnet/m
+p = v*m
 
 x_ = x + v*dt + 0.5*a*dt^2
-v_ = v + 0.5(a + a_)dt
+v_ = v + (0.5(a + a_)dt)
+
+trace t
+trace x
+trace v
+trace a
 
 ;; setting up constants
 phi = (1 + 5^0.5)/2
 up-factor = phi
 down-factor = 1 / phi
 
-work = Fnet * v * dt
+power = Fnet * v
 max-error := 0.1
 potential-error := 0
-potential-error_ =  mag (work_ - work)
+potential-error_ =  mag (power_ - power)*dt
 too-big = potential-error > max-error
 big-count := 0
 big-count_ = (big-count + 1) * too-big

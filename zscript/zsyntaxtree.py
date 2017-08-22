@@ -1,8 +1,8 @@
 import operator as op
+import random as rdm
 from collections import defaultdict
 
 from zscript.rply.token import BaseBox
-from zscript.zgraph import graph
 
 
 class ZWarning(Warning):
@@ -88,6 +88,14 @@ class Boolean(Literal):
         return str(self.val)
 
 
+class Random(Literal):
+    def __init__(self):
+        pass
+
+    def __call__(self, env, flag=None):
+        return rdm.random()
+
+
 class Vector(Literal):
     def __init__(self, x, y):
         self.x = x
@@ -167,7 +175,10 @@ class Function(Base):
         return function(self.inpt, flag)
 
     def __repr__(self):
-        return self.func + ' ' + repr(self.inpt)
+        inpt = repr(self.inpt)
+        if self.precedence > self.inpt.precedence:
+            inpt = '(' + inpt + ')'
+        return self.func + ' ' + inpt
 
 
 class Next(Base):
@@ -185,7 +196,7 @@ class Next(Base):
             if y not in vars:
                 vars.append(y)
 
-        listdata = lambda vars: [env[var, 'cur'] for var in vars]
+        dictdata = lambda vars: {var: env[var, 'cur'] for var in vars}
 
         def loop():
             newvalues = env.object['val'].copy()
@@ -199,28 +210,27 @@ class Next(Base):
                     raise error
                 newvalues[var] = v
             env.object['val'] = newvalues
-            c = listdata(vars)
+            c = dictdata(vars)
             return c
 
         def nextdata():
             def n1():
-                yield listdata(vars)
+                yield dictdata(vars)
                 for i in range(self.loops):
                     yield loop()
             def n2():
-                yield listdata(vars)
-                while True:
-                    yield loop()
+                def i():
+                    yield dictdata(vars)
+                    while True:
+                        yield loop()
+                yield i()
             if self.loops > 0:
                 return n1()
             else:
                 return n2()
 
         self.nextdata = nextdata()
-        if genv:
-            graph(genv, nextdata)
-        if self.loops != 0:
-            return nextdata()
+        return nextdata()
 
     def __repr__(self):
         return 'next ' + str(self.loops)
