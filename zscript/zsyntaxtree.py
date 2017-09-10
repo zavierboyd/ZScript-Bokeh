@@ -1,5 +1,6 @@
 import operator as op
 import random as rdm
+import numpy as np
 from collections import defaultdict
 
 from .rply.token import BaseBox
@@ -47,23 +48,28 @@ class Literal(Base):
     def __call__(self, env, flag=None):
         return self.val
 
-    def __repr__(self):
-        tp = type(self.val)
-        if tp == str:
-            return repr(String(self.val))
-        elif tp == float:
-            return repr(Number(self.val))
-        elif tp == bool:
-            return repr(Boolean(self.val))
-        elif tp == complex:
-            return repr(Vector(self.val.real, self.val.imag))
+
+class Unknown(Literal):
+    def __new__(cls, val):
+        if isinstance(val, str):
+            val = String(val)
+        elif isinstance(val, float):
+            val = Number(val)
+        elif isinstance(val, bool):
+            val = Boolean(val)
+        elif isinstance(val, complex):
+            val = Vector(val)
+        elif isinstance(val, np.ndarray):
+            val = Array(val)
         else:
             raise TypeError('The type: ' + str(tp) + 'is not a valid Literal')
+
+        return val
 
 
 class String(Literal):
     def __init__(self, val):
-        assert type(val) == str
+        assert isinstance(val, str)
         Literal.__init__(self, val)
 
     def __repr__(self):
@@ -72,7 +78,7 @@ class String(Literal):
 
 class Number(Literal):
     def __init__(self, val):
-        assert type(val) == float
+        assert isinstance(val, float)
         Literal.__init__(self, val)
 
     def __repr__(self):
@@ -81,7 +87,7 @@ class Number(Literal):
 
 class Boolean(Literal):
     def __init__(self, val):
-        assert type(val) == bool
+        assert isinstance(val, bool)
         Literal.__init__(self, val)
 
     def __repr__(self):
@@ -95,25 +101,47 @@ class Random(Literal):
     def __call__(self, env, flag=None):
         return rdm.random()
 
+    def __repr__(self):
+        return 'random'
+
 
 class Vector(Literal):
+    def __init__(self, val):
+        assert isinstance(val, complex)
+        Literal.__init__(self, val)
+
+    def __repr__(self):
+        return '({0}, {1})'.format(self.val.real, self.val.imag)
+
+
+class VectorConstructor(Vector):
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        Literal.__init__(self, None)
 
     def __call__(self, env, flag=None):
-        val = self.val
-        if self.val is None:
-            x = self.x(env, flag)
-            y = self.y(env, flag)
-            if flag is None:
-                self.val = complex(x, y)
-            val = complex(x, y)
-        return val
+        return complex(self.x(env, flag), self.y(env, flag))
 
     def __repr__(self):
         return '({0}, {1})'.format(self.x, self.y)
+
+
+class Array(Literal):
+    def __init__(self, val):
+        assert isinstance(val, np.ndarray)
+        Literal.__init__(self, val)
+
+    def __repr__(self):
+        return '[' + ', '.join([repr(bit) for bit in self.val]) + ']'
+
+
+class ArrayConstructor(Array):
+    def __init__(self, val):
+        assert isinstance(val, list)
+        Literal.__init__(self, val)
+
+    def __call__(self, env, flag=None):
+        return np.array([bit(env, flag) for bit in self.val])
 
 
 class Variable(Base):
@@ -137,7 +165,7 @@ class SetVar(Base):
         self.val = val
 
     def __call__(self, env, flag=None):
-        env[self.var, 'val'] = Literal(self.val(env, 'nxt'))
+        env[self.var, 'val'] = Unknown(self.val(env, 'nxt'))
 
     def __repr__(self):
         return self.var + ' := ' + repr(self.val)
@@ -161,7 +189,7 @@ class SetDef(Base):
         if self.cur:
             return self.var + ' = ' + repr(self.func)
         else:
-            return self.var + '_ = ' + repr(self.func)
+            return self.var + '_+ = ' + repr(self.func)
 
 
 class Function(Base):
@@ -190,11 +218,11 @@ class Next(Base):
         genv = env.object['gph']
         nenv = env.object['nxt']
         vars = tenv
-        for x, y in genv:
-            if x not in vars:
-                vars.append(x)
-            if y not in vars:
-                vars.append(y)
+        # for x, y in genv:
+        #     if x not in vars:
+        #         vars.append(x)
+        #     if y not in vars and y is not None:
+        #         vars.append(y)
 
         dictdata = lambda vars: {var: env[var, 'cur'] for var in vars}
 
@@ -213,24 +241,28 @@ class Next(Base):
             c = dictdata(vars)
             return c
 
-        def nextdata():
-            def n1():
-                yield dictdata(vars)
-                for i in range(self.loops):
-                    yield loop()
-            def n2():
-                def i():
-                    yield dictdata(vars)
-                    while True:
-                        yield loop()
-                yield i()
-            if self.loops > 0:
-                return n1()
-            else:
-                return n2()
+        def n1():
+            c = dictdata(vars)
+            yield c
+            for i in range(self.loops):
+                c = loop()
+                yield c
 
-        self.nextdata = nextdata()
-        return nextdata()
+        def n2():
+            def i():
+                c = dictdata(vars)
+                yield c
+                while True:
+                    c = loop()
+                    yield c
+            yield i()
+
+        if self.loops > 0:
+            r = n1()
+        else:
+            r = n2()
+
+        return r
 
     def __repr__(self):
         return 'next ' + str(self.loops)
@@ -245,7 +277,7 @@ class NextVariable(Base):
         return env[self.var, 'nxt']
 
     def __repr__(self):
-        return self.var + '_'
+        return self.var + '_+'
 
 
 class Trace(Base):
@@ -274,9 +306,38 @@ class Graph(Base):
         return r
 
 
+class Elseval():
+    def __init__(self, val, boolean):
+        self.boolean = boolean
+        self.val = val
+
+    def __call__(self, bv):
+        return self.val if bv == 'v' else self.boolean
+
+
+def if_(l, r):
+    return Elseval(l, True) if r else Elseval(0, False)
+
+
+def else_(l, r):
+    return l('v') if l('b') else r
+
+
+def dot_(l, r):
+    if type(l) is float:
+        result = l * r
+    elif type(r) is float:
+        result = l * r
+    else:
+        result = l @ r
+    return result
+
+arange = lambda l, r: Array(np.arange(l, r + 1))({})
+
+
 class BinOp(Base):
-    ops = {'^': (op.pow, 8),
-           '*': (op.mul, 7),
+    ops = {'*': (op.mul, 7),
+           '.': (dot_, 7),
            '/': (op.truediv, 6),
            '-': (op.sub, 5),
            '+': (op.add, 5),
@@ -287,7 +348,9 @@ class BinOp(Base):
            '<': (op.lt, 4),
            '>': (op.gt, 4),
            'and': (op.and_, 2),
-           'or': (op.or_, 1)}
+           'or': (op.or_, 1),
+           'if': (if_, 0),
+           'else': (else_, 0)}
 
     def __init__(self, l, r, com):
         self.l = l
@@ -306,6 +369,20 @@ class BinOp(Base):
         if self.precedence > self.r.precedence:
             r = '(' + r + ')'
         return l + ' ' + self.symbol + ' ' + r
+
+class BinOpAdj(BinOp):
+    ops = {'..': (arange, 8),
+           '^': (op.pow, 8),
+           '': (op.mul, 7.5)}
+
+    def __repr__(self):
+        l = repr(self.l)
+        r = repr(self.r)
+        if self.precedence > self.l.precedence:
+            l = '(' + l + ')'
+        if self.precedence > self.r.precedence:
+            r = '(' + r + ')'
+        return l + self.symbol + r
 
 
 class UniOp(Base):

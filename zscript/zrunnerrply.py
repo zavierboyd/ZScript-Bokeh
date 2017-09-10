@@ -18,12 +18,17 @@ def printgen(gen):
     else:
         for var, val in z.items():
             r[var] = [val]
+        x += 1
+        print(z)
+        pnt = False
         for i in gen:
+            pnt = False
             x += 1
             [r[var].append(val) for var, val in i.items()]
-            if x % 1 == 0:
+            if False and x % 5 == 0:
+                pnt = True
                 print(i)
-        if i is not None:
+        if i is not None and not pnt:
             print(i)
     return r
 

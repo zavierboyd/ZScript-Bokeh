@@ -3,10 +3,9 @@ from bokeh.layouts import column
 from bokeh.models import TextInput, Button, Div, PreText
 
 import zscript as zs
-from zgraph import np, bokehstaticgraph, bokehtickgraph
+from zgraph import np
 
 # from program import zscript_code
-
 
 
 # test = '''a := (1, 0)
@@ -14,6 +13,7 @@ from zgraph import np, bokehstaticgraph, bokehtickgraph
 # trace a
 # next 0'''
 # stuff = zs.compilerun(test, zs.Env())
+
 env = zs.Env(repl=True)
 
 def textstuff():
@@ -24,45 +24,15 @@ def textstuff():
     except Exception as e:
         gen = [e.__class__.__name__ + ': ' + '\n'.join([a for a in e.args if type(a) is str])]
     envdiv.text = 'Env: \n'+repr(env)
+    print(gen)
     for g in gen:
+        print(g)
         if type(g) in (float, complex, str, bool, int, tuple):
             output.text += str(g) + '<br/>'
         elif type(g) is dict:
-            for x, y in env.object['gph']:
-                if y is None:
-                    if sum([num.imag ** 2 for num in g[x]]) > 0:
-                        y = x+'#y'
-                        x += '#x'
-                    else:
-                        y = x
-                        x = 'index'
-                else:
-                    if sum([num.imag ** 2 for num in g[x]]) > 0:
-                        x += '#m'
-                    if sum([num.imag ** 2 for num in g[y]]) > 0:
-                        y += '#m'
-                fig = bokehstaticgraph(x, y, complexprotect(g))
-                curdoc().add_root(fig)
-        else:
-            update = None
-            for x, y in env.object['gph']:
-                first = next(g)
-                if y is None:
-                    if type(first[x]) is complex:
-                        y = x+'#y'
-                        x += '#x'
-                    else:
-                        y = x
-                        x = 'index'
-                else:
-                    if type(first[x]) is complex:
-                        x += '#m'
-                    if type(first[y]) is complex:
-                        y += '#m'
-                data = infintick(g, complexprotect(first))
-                fig, update = bokehtickgraph(x, y, data, curdoc)
-            if update is not None:
-                curdoc().add_next_tick_callback(update)
+            length = len(list(g.values())[0])
+            for i in range(length):
+                output.text += str({var: val[i] for var, val in g.items()}) + '<br/>'
 
     return
 

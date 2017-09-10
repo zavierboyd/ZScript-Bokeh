@@ -1,36 +1,22 @@
-from bokeh.io import curdoc, output_file
-from bokeh.models import ColumnDataSource, CustomJS
-from bokeh.models.widgets import TextInput, Div, Button, PreText
+from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
-from bokeh.plotting import Figure
-
-import numpy as np
-
+from bokeh.models.widgets import TextInput, Div, Button
+from globalwarmingsims.finalsim import *
+from data import *
 from zscript import *
-from program import spring as p
-env = Env(repl = True)
-init = '''a := 1
-a_ = a + 1
-trace a'''
-compilerun(p, env)
+from zgraph import *
 
-# env = Env()
-# compilerun(init, env)
-nxt = compiler('next 20')
-nxt(env)
-a = nxt.nextdata()
+env = Env(repl=True)
+compilerun(simulation, env)
 
-
-d = {'t': [], '#': []}
 def textstuff():
     global output, text, env, envdiv
+    print('HI I AM DOING STUFF :)')
     output.text += '>>>' + text.value + '<br/>'
     compilerun(text.value, env)
-    envdiv.text = 'Env: <br/>'+repr(env)
+    envdiv.text = 'Env: \n'+repr(env)
 
     return
-
-source = ColumnDataSource(d)  # ColumnDataSource(dict(x=[], y=[], avg=[]))
 
 text = TextInput(title='Equation: ', placeholder='a := 1')
 # text.on_change ## make this work
@@ -43,50 +29,39 @@ output = Div(text='hi this is test')
 
 curdoc().add_root(widgetbox([envdiv, text, output, update]))
 
+nxt = zs.compilerun('next 0', env)[-1]
+gen = infintick(nxt)
 
-fig = Figure()
-fig.line(source=source, x='#', y='t', line_width=2, alpha=.85, color='red')
+source = ColumnDataSource(next(gen))  # ColumnDataSource(dict(x=[], y=[], avg=[]))
+
+fig = Figure(title='Temperature')
+fig.line(source=source, x='tyears', y='tempsurface', line_width=2, alpha=.85)
 curdoc().add_root(fig)
-# fig = Figure()
-# fig.line(source=source, x='x', y='y', line_width=2, alpha=.85, color='red')
-# curdoc().add_root(fig)
-# fig = Figure()
-# fig.line(source=source, x='x', y='avg', line_width=2, alpha=.85, color='blue')
+
+fig = Figure(title='GHG Concentrations')
+fig.line(source=source, x='tyears', y='cco2abs', line_width=2, alpha=.85, color='blue')
+fig.line(source=source, x='tyears', y='cch4abs', line_width=2, alpha=.85, color='green')
+fig.line(source=source, x='tyears', y='cn2oabs', line_width=2, alpha=.85, color='red')
+curdoc().add_root(fig)
+
+fig = Figure(title='GHG Mass Reletive to 1750')
+fig.line(source=source, x='tyears', y='mco2a', line_width=2, alpha=.85, color='blue')
+fig.line(source=source, x='tyears', y='mch4', line_width=2, alpha=.85, color='green')
+fig.line(source=source, x='tyears', y='mn2o', line_width=2, alpha=.85, color='red')
+curdoc().add_root(fig)
+
+
+# fig = Figure(title='Radiative Forcings')
+# fig.line(source=source, x='tyears', y='tempsurface', line_width=2, alpha=.85)
 # curdoc().add_root(fig)
 
-# ct = 0
-# sine_sum = 0
-#
-# def i():
-#     ct = 0
-#     sine_sum = 0
-#     for x in range(100):
-#         ct += np.pi/100
-#         sine = np.sin(ct)
-#         sine_sum += sine
-#         yield dict(x=[ct], y=[sine], avg=[sine_sum/ct])
-# a = i()
-i = 0
-dt = (1/210)/10
+
 def update_data():
-    global a
-    global i
-    # global ct, sine_sum
-    # ct += np.pi/100
-    # sine = np.sin(ct)
-    # sine_sum += sine
-    try:
-        [next(a) for x in range(10)]
-        n = next(a)
-        n['#'] = [i]
-        new_data = {'t': [n['Xball'].imag*100], '#': [n['Xball'].real*100]}
-    except StopIteration:
-        a = nxt.nextdata()
-        n = next(a)
-        n['#'] = [i]
-        new_data = n
-    i += 1
+    global gen
+    [next(gen) for x in range(10)]
+    new_data = next(gen)
     source.stream(new_data, 1000)
+    # curdoc().add_next_tick_callback(update_data)
 
 
-curdoc().add_periodic_callback(update_data, 10)
+curdoc().add_periodic_callback(update_data, 100)

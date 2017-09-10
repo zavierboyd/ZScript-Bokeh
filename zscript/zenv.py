@@ -1,6 +1,7 @@
 from .zsyntaxtree import *
+from .zfunctions import differentiate, doublediff
 from collections import defaultdict
-import numpy as np
+from math import e, pi, cos, sin, log, log10, log2
 from copy import deepcopy
 
 
@@ -43,12 +44,14 @@ class FuncCall:
 class Env:
     def __init__(self, repl=False):
         self.repl = repl
-        self.value = {'random': Random()}
-        self.nextval = {}
-        self.current = {'true': Boolean(True), 'false': Boolean(False), 'pi': Number(np.pi), 'e': Number(np.e)}
+        self.value = {'random': Random(), 'index': Number(0.0)}
+        self.nextval = {'index': BinOp(Variable('index'), Number(1.0), '+')}
+        self.current = {'true': Boolean(True), 'false': Boolean(False), 'pi': Number(pi), 'e': Number(e)}
         self.defdepent = defaultdict(list)
-        self.trace = []
-        self.functions = {'abs': FuncCall(abs), 'mag': FuncCall(abs), 'cos': FuncCall(np.cos), 'sin': FuncCall(np.sin)}
+        self.trace = ['index']
+        self.functions = {'abs': FuncCall(abs), 'mag': FuncCall(abs), 'cos': FuncCall(cos), 'sin': FuncCall(sin),
+                          'ln': FuncCall(log), 'log10': FuncCall(log10), 'log2': FuncCall(log2),
+                          'diff': FuncCall(differentiate), 'diff2': FuncCall(doublediff)}
         self.graph = []
         self.object = EnvGetObjExt(self)
 
@@ -161,37 +164,47 @@ class Env:
             self.graph.append((x, y))
 
     def __repr__(self):
+        value = self.value.copy()
+        del value['random']
+
         current = self.current.copy()
         del current['true']
         del current['false']
         del current['pi']
         del current['e']
+
+        nextval = self.nextval.copy()
+        del nextval['index']
+
+        trace = self.trace.copy()
+        del trace[trace.index('index')]
+
         program = ''
 
-        value = '\n'.join([repr(SetVar(var, val)) for var, val in self.value.items()])
+        value = ';\n'.join([repr(SetVar(var, val)) for var, val in value.items()])
         if value:
-            program += value + '\n'
+            program += value + ';\n'
 
-        current = '\n'.join([repr(SetDef(var, val, True)) for var, val in current.items()])
+        current = ';\n'.join([repr(SetDef(var, val, True)) for var, val in current.items()])
         if current:
-            program += current + '\n'
+            program += current + ';\n'
 
-        nextval = '\n'.join([repr(SetDef(var, val, False)) for var, val in self.nextval.items()])
+        nextval = ';\n'.join([repr(SetDef(var, val, False)) for var, val in nextval.items()])
         if nextval:
-            program += nextval + '\n'
+            program += nextval + ';\n'
 
-        for var in self.trace:
-            program += repr(Trace(var)) + '\n'
+        for var in trace:
+            program += repr(Trace(var)) + ';\n'
 
         for x, y in self.graph:
-            program += repr(Graph(x, y)) + '\n'
+            program += repr(Graph(x, y)) + ';\n'
 
         return program
 
 
 class TestEnv(Env):
     def __init__(self):
-        def z(): return Literal(1)
+        def z(): return Unknown(1.0)
         def func(env):
             def testcall():
                 def thing2(inpt, flag):
