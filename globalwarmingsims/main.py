@@ -1,10 +1,9 @@
-from bokeh.io import curdoc
 from bokeh.layouts import widgetbox
 from bokeh.models.widgets import TextInput, Div, Button
+
 from globalwarmingsims.finalsim import *
-from data import *
-from zscript import *
 from zgraph import *
+from zscript import *
 
 env = Env(repl=True)
 compilerun(simulation, env)

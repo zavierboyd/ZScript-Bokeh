@@ -19,7 +19,7 @@ def printgen(gen):
         for var, val in z.items():
             r[var] = [val]
         x += 1
-        print(z)
+        # print(z)
         pnt = False
         for i in gen:
             pnt = False
@@ -28,8 +28,8 @@ def printgen(gen):
             if False and x % 5 == 0:
                 pnt = True
                 print(i)
-        if i is not None and not pnt:
-            print(i)
+        # if i is not None and not pnt:
+            # print(i)
     return r
 
 

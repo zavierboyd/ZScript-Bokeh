@@ -43,7 +43,7 @@ next 100
 baseline = '''
 ;; calculates the radiative forcing beyond gton-0
 absrf = 1.0569 * ln (CH4-gton/2) + 0.16019 * (ln (CH4-gton/2))^2;; * 1.4
-baserf := absrf
+baserf := 1.0569 * ln (CH4-gton/2) + 0.16019 * (ln (CH4-gton/2))^2
 df = absrf - baserf
 ;;CH4-RF = (-1.0569 * ( (ln (0.8)) - (ln (CH4-gton/2)) ) - 0.16019 * ( (ln (0.8))^2 - (ln (CH4-gton/2))^2 ));; * 1.4
 ;;CH4-RF = (-1.0569 * ( (ln (0.8)) - (ln (CH4-gton/2)) ) - 0.16019 * ( (ln (0.8))^2 - (ln (CH4-gton/2))^2 )) * 1.4

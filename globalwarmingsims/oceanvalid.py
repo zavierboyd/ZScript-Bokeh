@@ -59,11 +59,13 @@ env = zs.Env()
 data = zs.compilerun(testsim, env)[-1]
 data = complexprotect(data)
 
-fig1 = Figure()
-fig1.line('tyears', 'surfacetemp', source=data)
-fig1.line('tyears', 'temp', source=data, color='red')
-fig1.line('tyears', 'avgtemp', source=data, color='purple')
-fig1.line('tyears', 'ed', source=data, color='green')
+fig1 = Figure(title='TCR vs ECS', toolbar_location='above', x_axis_label='year', y_axis_label='Temperature Change')
+a = fig1.line('tyears', 'surfacetemp', source=data, line_width=5, alpha=.85, color='blue', line_dash='dashed', legend='Transient Climate Response (TCR)')
+b = fig1.line('tyears', 'temp', source=data, line_width=5, alpha=.85, color='red', line_dash='dotted', legend='Equivalent Climate Sensitivity (ECS)')
+# fig1.line('tyears', 'avgtemp', source=data, color='purple')
+# fig1.line('tyears', 'ed', source=data, color='green')
+fig1.legend.location = 'bottom_right'
+
 
 curdoc().add_root(fig1)
 

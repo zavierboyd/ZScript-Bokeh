@@ -2,7 +2,7 @@
 # import matplotlib.pyplot as plt
 # import mpld3 as mpl
 # import bokeh as bo
-from bokeh.models import ColumnDataSource, PreText
+from bokeh.models import ColumnDataSource, Legend, PreText
 from bokeh.plotting import Figure
 # except:
 #     pass

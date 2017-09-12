@@ -230,7 +230,7 @@ class Next(Base):
             newvalues = env.object['val'].copy()
             for var, eq in nenv.items():
                 try:
-                    v = Literal(eq(env, flag))
+                    v = Unknown(eq(env, flag))
                 except Exception as e:
                     args = ', '.join([i for i in e.args if type(i) in (str,)])
                     error = e.__class__()
