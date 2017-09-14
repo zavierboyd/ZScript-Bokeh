@@ -8,7 +8,7 @@ testsim = '''
 dt := 365*24*60*60 ;; seconds -> 1 day
 t := 0
 t_+ = dt + t
-dyears = dt/(365*24*60*60)
+dtyears = dt/(365*24*60*60)
 tyears = t/(365*24*60*60)
 Amass := 5.1e6 ;; gigatons
 molea := 28.97 ;; grams/AMU
@@ -40,13 +40,18 @@ co2deep = 0.005*co2omass
 co2-tmass = 10*(0.217 + 0.259*e^(-tyears/172.9) +0.338*e^(-tyears/18.51) + 0.186*e^(-tyears/1.186))
 
 trace co2-tmass
-trace co2mass
+trace co2amass
 trace tyears
 next 100
 '''
 
 rf = '''
 ;; CO2 RF Calculation ;;
+Amass := 5.1e6 ;; gigatons
+molea := 28.97 ;; grams/AMU
+co2mole := 44 ;; grams/AMU
+co2mass-ppmv := (1.0e6/Amass) * (molea/co2mole)
+alpha := co2mass-ppmv
 
 pco2 := 400 ;; ppmv
 pmco2 = pco2 + alpha
@@ -69,19 +74,17 @@ data = zs.compilerun(testsim, env)[-1]
 # zs.repl(env)
 data = complexprotect(data)
 fig4 = Figure(title='CO2 Concentration', x_axis_label='year', y_axis_label='Gtons of CO2')
-a = fig4.line('tyears', 'co2tppmv', source=data, color='black', line_dash='dotted', legend='IPCC Concentration Formula')
-b = fig4.line('tyears', 'co2-tppmv', source=data, color='black', line_dash='dashed', legend='CO2 Concentration')
+fig4.line('tyears', 'co2amass', source=data, color='black', line_width=3, alpha=.85, line_dash='dotted', legend='IPCC Concentration Formula')
+fig4.line('tyears', 'co2-tmass', source=data, color='black', line_width=3, alpha=.85, line_dash='dashed', legend='CO2 Concentration')
 
 env = zs.Env()
 data = zs.compilerun(rf, env)[-1]
 # zs.repl(env)
 data = complexprotect(data)
 fig6 = Figure(title='CO2 Change in Forcing', x_axis_label='year', y_axis_label='W/m^2')
-a = fig6.line('index', 'dfco2', source=data, color='black', line_dash='dotted')
-b = fig6.line('index', 'co2-drf', source=data, color='black', line_dash='dashed')
+fig6.line('index', 'dfco2', source=data, color='black', line_dash='dotted', line_width=3, alpha=.85, legend='My Model Radiative Forcing')
+fig6.line('index', 'co2-drf', source=data, color='black', line_dash='dashed', line_width=3, alpha=.85, legend='Chicago Uni Radiative Forcing')
 
-fig6.add_layout(Legend(items=[('My Model Radiative Forcing', [a]),
-                              ('Chicago Uni Radiative Forcing', [b])], location=(0, -30)), 'right')
 
 curdoc().add_root(fig4)
 curdoc().add_root(fig6)

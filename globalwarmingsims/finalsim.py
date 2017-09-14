@@ -1,7 +1,7 @@
 from bokeh.io import curdoc
 
 import zscript as zs
-from globalwarmingsims.data import *
+from data import *
 from zgraph import *
 from zscript.zsyntaxtree import Unknown
 
@@ -322,18 +322,18 @@ trace tyears;
 
 def spikecalc(base, time):
 
-    srcch4 = lambda time: '''
+    ch4 = lambda time: '''
     Srcco2 := 0 ;; gigatons ;; co2 source
     Srcch4 = 1 if tyears < '''+ str(time) +''' else 0 ;; gigatons ;; ch4 source
     Srcn2o := 0 ;; gigatons ;; n2o source
     '''
 
-    simulation1ch4 = base + srcch4(time)
+    simulation1ch4 = base + ch4(time)
     env2 = zs.Env()
     zs.compilerun(simulation1ch4, env2)
     zs.compilerun('next ' + str(round(100 / env2['dtyears', 'cur'])), env2)
 
-    scrco2 = lambda co2, time: '''
+    co2 = lambda co2, time: '''
     Srcco2 = ''' + str(co2) + ''' if tyears < '''+ str(time) +''' else 0;; gigatons ;; co2 source
     Srcch4 := 0  ;; gigatons ;; ch4 source
     Srcn2o := 0 ;; gigatons ;; n2o source
@@ -342,25 +342,61 @@ def spikecalc(base, time):
     maxtemp = env2['tempmax', 'cur']
     print(maxtemp, 'ch4')
 
-    spike = 1
-    spikes = []
-    temps = []
-    for i in range(10):
-        simulation1co2 = base + scrco2(spike, time)
-        env1 = zs.Env()
-        zs.compilerun(simulation1co2, env1)
-        zs.compilerun('next ' + str(round(100/env1['dtyears', 'cur'])), env1)
-        maxtempco2 = env1['tempmax', 'cur']
-        spikes.append(spike)
-        temps.append(maxtempco2)
-        print('test', i, maxtempco2, 'co2', spike)
-        percent = (maxtemp-maxtempco2)/maxtemp
-        if abs(percent) < 0.02:
-            break
-        spike = spike * (1 + percent)
+    # spike = 1
+    # spikes = []
+    # temps = []
+    # for i in range(10):
+    #     simulation1co2 = base + scrco2(spike, time)
+    #     env1 = zs.Env()
+    #     zs.compilerun(simulation1co2, env1)
+    #     zs.compilerun('next ' + str(round(100/env1['dtyears', 'cur'])), env1)
+    #     maxtempco2 = env1['tempmax', 'cur']
+    #     spikes.append(spike)
+    #     temps.append(maxtempco2)
+    #     print('test', i, maxtempco2, 'co2', spike)
+    #     percent = (maxtemp-maxtempco2)/maxtemp
+    #     if abs(percent) < 0.02:
+    #         break
+    #     spike = spike * (1 + percent)
 
-    print(spikes)
-    print(temps)
+    low = 0
+    lowtemp = 0
+    high = 1000
+    hightemp = None
+
+    env1 = zs.Env(repl=True)
+    zs.compilerun(base, env1)
+    zs.compilerun(co2(high, time), env1)
+    zs.compilerun('next ' + str(round(100 / env1['dtyears', 'cur'])), env1)
+
+    hightemp = env1['tempmax', 'cur']
+    spike = 1
+
+    for x in range(10):
+        env1 = zs.Env(repl=True)
+        zs.compilerun(base, env1)
+        zs.compilerun(co2(spike, time), env1)
+        ordata = zs.compilerun('next ' + str(round(1 / env1['dtyears', 'cur'])), env1)[-1]
+        data = {idx: [ordata[idx][0]] for idx in ordata.keys()}
+        for idx in ordata.keys():
+            data[idx].append(ordata[idx][-1])
+        for i in range(1, 100):
+            yeardata = zs.compilerun('next ' + str(round(1 / env1['dtyears', 'cur'])), env1)[-1]
+            [data[idx].append(yeardata[idx][-1]) for idx in data.keys()]
+        maxtempco2 = env1['tempmax', 'cur']
+        print('test', x, maxtempco2, 'co2', spike)
+        percent = (maxtemp - maxtempco2) / maxtemp
+        if abs(percent) < 0.01:
+            break
+        if percent > 0:
+            low = spike
+            lowtemp = maxtempco2
+        else:
+            high = spike
+            hightemp = maxtempco2
+        gradient = (hightemp - lowtemp) / (high - low)
+        spike = low + (maxtemp - lowtemp) / gradient
+
 
 
 def spikecalcrpc100(base, time, spike, rpcdata, startyear, dataset):
@@ -434,21 +470,10 @@ def spikecalcrpc100(base, time, spike, rpcdata, startyear, dataset):
     curdoc().add_root(concentration)
 
 
-def spikecalcrpcmax(base, time, spike, rpcrfdata, rpccodata, startyear, dataset, years):
+def spikecalcrpcmax(base, time, spike, rpcrfdata, startyear, dataset, years):
     rf = rpcrfdata#{idx: {r: str(float(rpcrfdata[idx][r]) - float(rpcrfdata[startyear][r])) for r in rpcrfdata[idx].keys()} for idx in rpcrfdata.keys()}
 
-    concentrationstartyear = '''
-    ;; Starting Concentrations ;; Values from: Recent Greenhouse Gas Concentrations, DOI: 10.3334/CDIAC/atg.032
-    Cco2 := ''' + rpccodata[startyear]['co2'] + ''' ;; ppmv
-    Cch4 := ''' + rpccodata[startyear]['ch4'] + ''' ;; ppbv
-    Cn2o := ''' + rpccodata[startyear]['n2o'] + ''' ;; ppbv
-
-    ;; Formula from: Myhrvold and Caldeira (2012) Supporting Information
-    Gbase := ln (1 + 1.2*Cco2 + 0.005*Cco2^2 + 1.4e-6*Cco2^3)
-    Fn2o0ch40 := 0.47*ln (1 + 2.01e-5*(Cch4 * Cn2o)^0.75 + 5.31e-15*Cch4*(Cch4 * Cn2o)^1.52)
-    '''
-
-    simulation = base + concentrationstartyear + '; Frel = Fco2rel + Fch4rel + Fn2orel + Frelrcp'
+    simulation = base + '; Frel = Fco2rel + Fch4rel + Fn2orel + Frelrcp'
 
     rcp = lambda year: '''
     Frelrcp := ''' + rf[year]['totalhuman']
@@ -549,34 +574,24 @@ def spikecalcrpcmax(base, time, spike, rpcrfdata, rpccodata, startyear, dataset,
     data['tyears'] = [year + startyear for year in data['tyears']]
 
     temp = Figure(title='Temperature Reletive to Baseline' + dataset + ' spike duration:' + str(time) + ' CO2 spike amount:' + str(spike) + ' Spike calculated by Max Temperature')
-    concentration = Figure(title='Mass of Gasses (Gigatons) ' + dataset + ' spike duration:' + str(time) + ' CO2 spike amount:' + str(spike) + ' Spike calculated by Max Temperature')
+    # concentration = Figure(title='Mass of Gasses (Gigatons) ' + dataset + ' spike duration:' + str(time) + ' CO2 spike amount:' + str(spike) + ' Spike calculated by Max Temperature', legend_location='bottom_right')
     temp.line('tyears', 'tempsurface', source=datach4, color='black', line_dash='dashed', legend='Methane Temp')
     temp.line('tyears', 'tempsurface', source=datarcp, color='black', line_dash='solid', legend=dataset + ' Temp')
     temp.line('tyears', 'tempsurface', source=data, color='black', line_dash='dotted', legend='Carbon Dioxide Temp')
 
-    concentration.line('tyears', 'mch4', source=datach4, color='black', line_dash='dashed', legend='Gtons of Methane')
-    concentration.line('tyears', 'mco2a', source=data, color='black', line_dash='dotted', legend='Gtons of Carbon Dioxide')
+    temp.legend.location = "bottom_right"
+    # concentration.line('tyears', 'mch4', source=datach4, color='black', line_dash='dashed', legend='Gtons of Methane')
+    # concentration.line('tyears', 'mco2a', source=data, color='black', line_dash='dotted', legend='Gtons of Carbon Dioxide')
 
     curdoc().add_root(temp)
-    curdoc().add_root(concentration)
+    # curdoc().add_root(concentration)
     return spike
 
 
-def spikecalcrpcinte(base, time, spike, rpcrfdata, rpccodata, startyear, dataset, years):
+def spikecalcrpcinte(base, time, spike, rpcrfdata, startyear, dataset, years):
     rf = rpcrfdata#{idx: {r: str(float(rpcrfdata[idx][r]) - float(rpcrfdata[startyear][r])) for r in rpcrfdata[idx].keys()} for idx in rpcrfdata.keys()}
 
-    concentrationstartyear = '''
-    ;; Starting Concentrations ;; Values from: Recent Greenhouse Gas Concentrations, DOI: 10.3334/CDIAC/atg.032
-    Cco2 := ''' + rpccodata[startyear]['co2'] + ''' ;; ppmv
-    Cch4 := ''' + rpccodata[startyear]['ch4'] + ''' ;; ppbv
-    Cn2o := ''' + rpccodata[startyear]['n2o'] + ''' ;; ppbv
-
-    ;; Formula from: Myhrvold and Caldeira (2012) Supporting Information
-    Gbase := ln (1 + 1.2*Cco2 + 0.005*Cco2^2 + 1.4e-6*Cco2^3)
-    Fn2o0ch40 := 0.47*ln (1 + 2.01e-5*(Cch4 * Cn2o)^0.75 + 5.31e-15*Cch4*(Cch4 * Cn2o)^1.52)
-    '''
-
-    simulation = base + concentrationstartyear + '; Frel = Fco2rel + Fch4rel + Fn2orel + Frelrcp'
+    simulation = base + '; Frel = Fco2rel + Fch4rel + Fn2orel + Frelrcp'
 
     rcp = lambda year: '''
     Frelrcp := ''' + rf[year]['totalhuman']
@@ -678,21 +693,21 @@ def spikecalcrpcinte(base, time, spike, rpcrfdata, rpccodata, startyear, dataset
 
     temp = Figure(title='Temperature Reletive to Baseline' + dataset + ' spike duration:' + str(
         time) + ' CO2 spike amount:' + str(spike) + ' Spike calculated by Integrated Temperature')
-    concentration = Figure(
-        title='Mass of Gasses (Gigatons) ' + dataset + ' spike duration:' + str(time) + ' CO2 spike amount:' + str(
-            spike) + ' Spike calculated by Integrated Temperature')
+    # concentration = Figure(
+    #     title='Mass of Gasses (Gigatons) ' + dataset + ' spike duration:' + str(time) + ' CO2 spike amount:' + str(
+    #         spike) + ' Spike calculated by Integrated Temperature')
     temp.line('tyears', 'tempsurface', source=datach4, color='black', line_dash='dashed', legend='Methane Temp')
     temp.line('tyears', 'tempsurface', source=datarcp, color='black', line_dash='solid', legend=dataset + ' Temp')
     temp.line('tyears', 'tempsurface', source=data, color='black', line_dash='dotted',
               legend='Carbon Dioxide Temp')
 
-    concentration.line('tyears', 'mch4', source=datach4, color='black', line_dash='dashed',
-                       legend='Gtons of Methane')
-    concentration.line('tyears', 'mco2a', source=data, color='black', line_dash='dotted',
-                            legend='Gtons of Carbon Dioxide')
-
+    # concentration.line('tyears', 'mch4', source=datach4, color='black', line_dash='dashed',
+    #                    legend='Gtons of Methane')
+    # concentration.line('tyears', 'mco2a', source=data, color='black', line_dash='dotted',
+    #                         legend='Gtons of Carbon Dioxide')
+    temp.legend.location = "bottom_right"
     curdoc().add_root(temp)
-    curdoc().add_root(concentration)
+    # curdoc().add_root(concentration)
     return spike
 
 # env = zs.Env(repl=True)
@@ -795,6 +810,34 @@ def test(rcprf, rcpco, rcpid, spike, spikeduration, startyear):
 methanespike = 1  # 29244.16 / 34e6  # gt NZ cows methane emissions in Gtons
 time = 1  # years
 
+base = constants + concentration2017 + '''
+Gbase = ln (1 + 1.2*Cco2 + 0.005*Cco2^2 + 1.4e-6*Cco2^3)
+Fn2o0ch40 = 0.47*ln (1 + 2.01e-5*(Cch4 * Cn2o)^0.75 + 5.31e-15*Cch4*(Cch4 * Cn2o)^1.52)
+''' + srcdefualt + oceandefault + ch4concentration + co2concentrationmethaneadd + co2radiativeforcing + ch4radiativeforcing + n2oconcentration + n2oradiativeforcing + ocean + oceanbase + runsim
+
+# spikecalc(simulationcurrent, 2)
+
+# costmax = []
+# costinte = []
+env = zs.Env(repl=True)
+zs.compilerun(base, env)
+zs.compilerun(concentrationdefualt, env)
+zs.compilerun('Frel = Fco2rel + Fch4rel + Fn2orel + Frelrcp', env)
+zs.compilerun('Frelrcp := ' + rcp45rfdata[2015]['totalhuman'], env)
+year = 2015 - 2000
+if year > 0:
+    zs.compilerun('next ' + str(round(year/env['dtyears', 'cur'])), env)
+
+oceannex = Unknown(env['ocean', 'cur'])
+oceannex = '\nocean := ' + repr(oceannex)
+base += oceannex
+#
+# spikecalcrpcinte(base, 2, 1, rcp45rfdata, rcp45codata, 2015, 'rcp4.5', 100)
+spikecalcrpcmax(base, 2, 1, rcp45rfdata, 2015, 'rcp4.5', 100)
+#
+# spikecalcrpcinte(base, 2, 1, rcp3rfdata, rcp45codata, 2015, 'rcp3', 100)
+spikecalcrpcmax(base, 2, 1, rcp3rfdata, 2015, 'rcp3', 100)
+
 # costmax, costinte, year = test(rcp3rfdata, rcp3codata, 'rcp3', 1, 2, 2015)
 # print(costmax)
 # print(costinte)
@@ -805,50 +848,7 @@ time = 1  # years
 # print(costinte)
 # print(year)
 #
-costmax, costinte, year = test(rcp6rfdata, rcp6codata, 'rpc6', 1, 2, 2015)
-print(costmax)
-print(costinte)
-print(year)
-#
-# costmax, costinte, year = test(rcp85rfdata, rcp85codata, 'rpc8.5', 1, 2, 2015)
+# costmax, costinte, year = test(rcp6rfdata, rcp6codata, 'rpc6', 1, 2, 2015)
 # print(costmax)
 # print(costinte)
 # print(year)
-
-# spikecalcrpc(simulationcurrent, time, methanespike, rcp3rfdata, rcp3codata, 2015, 'rcp3', 20)
-# spikecalcrpc(simulationcurrent, time, methanespike, rcp3rfdata, rcp3codata, 2015, 'rcp3', 20)
-# spikecalcrpc(simulationcurrent, time, methanespike, rcp3rfdata, rcp3codata, 2015, 'rcp3', 20)
-
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp6rfdata, 2017, 'rcp6')
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp45rfdata, 2017, 'rcp4.5')
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp85rfdata, 2017, 'rcp8.5')
-
-# time = 20  # years
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp3rfdata, 2017, 'rcp3')
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp6rfdata, 2017, 'rcp6')
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp45rfdata, 2017, 'rcp4.5')
-# spikecalcrpc100(simulationcurrent, time, methanespike, rcp85rfdata, 2017, 'rcp8.5')
-
-
-#
-# fig = Figure(title='Temperature', toolbar_location='above')
-# a = fig.line(source={'x': [1,2,3,4,5], 'y': [5,4,3,4,5]}, x='x', y='y', line_width=2, alpha=.85, line_dash='dotted')
-#
-# fig.add_layout(Legend(items=[('balh', [a])], location=(0, -30)), 'right')
-# curdoc().add_root(fig)
-#
-# fig = Figure(title='GHG Concentrations')
-# fig.line(source=source, x='tyears', y='cco2abs', line_width=2, alpha=.85, color='blue')
-# fig.line(source=source, x='tyears', y='cch4abs', line_width=2, alpha=.85, color='green')
-# fig.line(source=source, x='tyears', y='cn2oabs', line_width=2, alpha=.85, color='red')
-# curdoc().add_root(fig)
-#
-# fig = Figure(title='GHG Radiative Forcings to 1750')
-# fig.line(source=source, x='tyears', y='fco2rel', line_width=2, alpha=.85, color='blue')
-# fig.line(source=source, x='tyears', y='fch4rel', line_width=2, alpha=.85, color='green')
-# fig.line(source=source, x='tyears', y='fn2orel', line_width=2, alpha=.85, color='red')
-# fig.line(source=source, x='tyears', y='frel', line_width=2, alpha=.85, color='black')
-# curdoc().add_root(fig)
-# data = zs.compilerun('next 12167', env)[-1]
-# data = complexprotect(data)
-# zs.repl(env)

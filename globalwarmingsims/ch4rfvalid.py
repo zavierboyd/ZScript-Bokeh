@@ -61,9 +61,9 @@ data1750 = zs.compilerun(constants+baseline, env1750)[-1]
 data1750 = complexprotect(data1750)
 
 fig = Figure(title='Radiative Forcing')
-fig.line('tyears', 'dfch4', source=data)
+fig.line('tyears', 'dfch4', source=data, line_width=5, alpha=.85, color='black', line_dash='dotted', legend='My Model')
 # fig.line('index', 'ch4-rf', source=data1750, color='green')
-fig.line('index', 'df', source=data1750, color='red')
+fig.line('index', 'df', source=data1750, line_width=5, alpha=.85, color='black', line_dash='dashed', legend='Chicago Model')
 
 
 curdoc().add_root(fig)

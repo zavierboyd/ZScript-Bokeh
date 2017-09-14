@@ -76,15 +76,10 @@ data1750['ch4-sink'] = np.array(data1750['ch4-sink']) - 0.46
 data1750['ch4-gton'] = np.array(data1750['ch4-gton']) - 3.459
 data = complexprotect(data)
 fig2 = Figure(title='Methane Concentration')
-fig2.line('tyears', 'ch4mass', source=data, line_dash='dotted')
+fig2.line('tyears', 'ch4mass', source=data, line_dash='dotted', line_width=5, alpha=.85, color='black', legend='My Model')
 # fig2.line('index', 'pch4-base', source=data, color='green')
-fig2.line('index', 'ch4-gton', source=data1750, color='black', line_dash='dashed')
-
-fig4 = Figure(title='Methane sink')
-fig4.line('tyears', 'ch4life', source=data)
-fig4.line('index', 'ch4-sink', source=data1750, color='green')
+fig2.line('index', 'ch4-gton', source=data1750, line_dash='dashed', line_width=5, alpha=.85, color='black', legend='Chicago Model')
 
 
 curdoc().add_root(fig2)
-curdoc().add_root(fig4)
 
